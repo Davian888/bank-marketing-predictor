@@ -42,101 +42,6 @@ st.markdown("""
         font-size: 13px;
         margin: 5px 0 0 0;
     }
-    
-    /* Result Card Styles */
-    .result-card {
-        border-radius: 16px;
-        padding: 30px;
-        text-align: center;
-        margin: 20px 0;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-        animation: slideUp 0.5s ease-out;
-    }
-    
-    @keyframes slideUp {
-        from { opacity: 0; transform: translateY(30px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    
-    .result-positive {
-        background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-        border: 2px solid #10b981;
-    }
-    
-    .result-negative {
-        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-        border: 2px solid #ef4444;
-    }
-    
-    .result-icon {
-        font-size: 64px;
-        margin-bottom: 15px;
-    }
-    
-    .result-title-yes {
-        color: #059669 !important;
-        font-size: 28px;
-        font-weight: 700;
-        margin: 10px 0;
-    }
-    
-    .result-title-no {
-        color: #dc2626 !important;
-        font-size: 28px;
-        font-weight: 700;
-        margin: 10px 0;
-    }
-    
-    .result-subtitle {
-        color: #6b7280 !important;
-        font-size: 16px;
-    }
-    
-    .prob-container {
-        display: flex;
-        justify-content: center;
-        gap: 40px;
-        margin: 25px 0;
-    }
-    
-    .prob-item {
-        text-align: center;
-    }
-    
-    .prob-value {
-        font-size: 36px;
-        font-weight: 700;
-    }
-    
-    .prob-yes { color: #10b981 !important; }
-    .prob-no { color: #ef4444 !important; }
-    
-    .prob-label {
-        color: #6b7280 !important;
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-    
-    .factor-card {
-        background: white;
-        border-radius: 8px;
-        padding: 12px 16px;
-        margin: 8px 0;
-        border-left: 4px solid;
-        text-align: left;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    }
-    
-    .factor-positive { border-left-color: #10b981; }
-    .factor-warning { border-left-color: #f59e0b; }
-    .factor-neutral { border-left-color: #6b7280; }
-    
-    .confidence-ring {
-        width: 120px;
-        height: 120px;
-        margin: 0 auto 20px;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -175,7 +80,7 @@ def create_donut_chart(probability):
     
     fig = go.Figure(data=[go.Pie(
         values=[probability * 100, (1 - probability) * 100],
-        hole=0.75,
+        hole=0.7,
         marker_colors=[color, "#e5e7eb"],
         textinfo='none',
         hoverinfo='skip',
@@ -186,7 +91,7 @@ def create_donut_chart(probability):
     fig.add_annotation(
         text=f"<b>{probability*100:.0f}%</b>",
         x=0.5, y=0.5,
-        font=dict(size=28, color=color, family="Arial"),
+        font=dict(size=32, color=color, family="Arial"),
         showarrow=False
     )
     
@@ -195,8 +100,8 @@ def create_donut_chart(probability):
         margin=dict(l=10, r=10, t=10, b=10),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        height=160,
-        width=160
+        height=200,
+        width=200
     )
     
     return fig
@@ -387,76 +292,74 @@ def main():
             
             prediction = 1 if proba[1] >= threshold else 0
             pred_label = model_package['label_encoder'].inverse_transform([prediction])[0]
-            confidence = max(proba) * 100
             
             factors = get_risk_factors(inputs, proba)
             
-            # ============ CREATIVE RESULT DISPLAY ============
+            # ============ RESULT DISPLAY ============
             st.markdown("---")
             
             if pred_label == 'yes':
-                # POSITIVE RESULT
-                st.balloons()  # Fun animation!
+                st.balloons()
                 
-                st.markdown(f"""
-                <div class="result-card result-positive">
-                    <div class="result-icon">🎯</div>
-                    <div class="result-title-yes">HIGH POTENTIAL CLIENT</div>
-                    <div class="result-subtitle">This client is likely to subscribe to a term deposit</div>
+                # Result container
+                result_container = st.container()
+                with result_container:
+                    st.success("## 🎯 HIGH POTENTIAL CLIENT")
+                    st.markdown("##### This client is **likely to subscribe** to a term deposit")
                     
-                    <div class="prob-container">
-                        <div class="prob-item">
-                            <div class="prob-value prob-yes">{proba[1]*100:.1f}%</div>
-                            <div class="prob-label">Subscribe</div>
-                        </div>
-                        <div class="prob-item">
-                            <div class="prob-value prob-no">{proba[0]*100:.1f}%</div>
-                            <div class="prob-label">Not Subscribe</div>
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-                
+                    # Probability display
+                    col1, col2, col3 = st.columns([1, 1, 1])
+                    with col1:
+                        st.metric(
+                            label="Subscribe Probability",
+                            value=f"{proba[1]*100:.1f}%",
+                            delta="Positive"
+                        )
+                    with col2:
+                        # Donut chart
+                        fig = create_donut_chart(proba[1])
+                        st.plotly_chart(fig, use_container_width=True)
+                    with col3:
+                        st.metric(
+                            label="Not Subscribe Probability", 
+                            value=f"{proba[0]*100:.1f}%"
+                        )
             else:
-                # NEGATIVE RESULT
-                st.markdown(f"""
-                <div class="result-card result-negative">
-                    <div class="result-icon">📊</div>
-                    <div class="result-title-no">LOW POTENTIAL CLIENT</div>
-                    <div class="result-subtitle">This client is unlikely to subscribe to a term deposit</div>
+                # Result container
+                result_container = st.container()
+                with result_container:
+                    st.error("## 📊 LOW POTENTIAL CLIENT")
+                    st.markdown("##### This client is **unlikely to subscribe** to a term deposit")
                     
-                    <div class="prob-container">
-                        <div class="prob-item">
-                            <div class="prob-value prob-yes">{proba[1]*100:.1f}%</div>
-                            <div class="prob-label">Subscribe</div>
-                        </div>
-                        <div class="prob-item">
-                            <div class="prob-value prob-no">{proba[0]*100:.1f}%</div>
-                            <div class="prob-label">Not Subscribe</div>
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            # Donut Chart
-            col1, col2, col3 = st.columns([1, 1, 1])
-            with col2:
-                st.markdown("**Confidence Score**")
-                fig = create_donut_chart(proba[1])
-                st.plotly_chart(fig, use_container_width=True)
+                    # Probability display
+                    col1, col2, col3 = st.columns([1, 1, 1])
+                    with col1:
+                        st.metric(
+                            label="Subscribe Probability",
+                            value=f"{proba[1]*100:.1f}%"
+                        )
+                    with col2:
+                        # Donut chart
+                        fig = create_donut_chart(proba[1])
+                        st.plotly_chart(fig, use_container_width=True)
+                    with col3:
+                        st.metric(
+                            label="Not Subscribe Probability",
+                            value=f"{proba[0]*100:.1f}%",
+                            delta="Higher",
+                            delta_color="inverse"
+                        )
             
             # Key Factors
-            st.markdown("### 💡 Key Factors Influencing This Prediction")
+            st.markdown("### 💡 Key Factors")
             
-            cols = st.columns(2)
-            for i, (icon, text, factor_type) in enumerate(factors):
-                with cols[i % 2]:
-                    css_class = f"factor-{factor_type}"
-                    st.markdown(f"""
-                    <div class="factor-card {css_class}">
-                        {icon} {text}
-                    </div>
-                    """, unsafe_allow_html=True)
+            for icon, text, factor_type in factors:
+                if factor_type == "positive":
+                    st.success(f"{icon} {text}")
+                elif factor_type == "warning":
+                    st.warning(f"{icon} {text}")
+                else:
+                    st.info(f"{icon} {text}")
             
             # Download Report
             st.markdown("---")
