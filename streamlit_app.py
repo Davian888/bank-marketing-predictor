@@ -43,25 +43,99 @@ st.markdown("""
         margin: 5px 0 0 0;
     }
     
-    .profile-card {
-        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-        border-radius: 10px;
-        padding: 20px;
-        border-left: 4px solid #2b6cb0;
+    /* Result Card Styles */
+    .result-card {
+        border-radius: 16px;
+        padding: 30px;
+        text-align: center;
+        margin: 20px 0;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        animation: slideUp 0.5s ease-out;
     }
     
-    .insight-card {
-        background: #f0f9ff;
-        border-radius: 8px;
-        padding: 15px;
-        border: 1px solid #bae6fd;
-        margin: 5px 0;
+    @keyframes slideUp {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
     }
     
-    .metric-highlight {
-        font-size: 32px;
+    .result-positive {
+        background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+        border: 2px solid #10b981;
+    }
+    
+    .result-negative {
+        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+        border: 2px solid #ef4444;
+    }
+    
+    .result-icon {
+        font-size: 64px;
+        margin-bottom: 15px;
+    }
+    
+    .result-title-yes {
+        color: #059669 !important;
+        font-size: 28px;
         font-weight: 700;
-        color: #2b6cb0;
+        margin: 10px 0;
+    }
+    
+    .result-title-no {
+        color: #dc2626 !important;
+        font-size: 28px;
+        font-weight: 700;
+        margin: 10px 0;
+    }
+    
+    .result-subtitle {
+        color: #6b7280 !important;
+        font-size: 16px;
+    }
+    
+    .prob-container {
+        display: flex;
+        justify-content: center;
+        gap: 40px;
+        margin: 25px 0;
+    }
+    
+    .prob-item {
+        text-align: center;
+    }
+    
+    .prob-value {
+        font-size: 36px;
+        font-weight: 700;
+    }
+    
+    .prob-yes { color: #10b981 !important; }
+    .prob-no { color: #ef4444 !important; }
+    
+    .prob-label {
+        color: #6b7280 !important;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .factor-card {
+        background: white;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin: 8px 0;
+        border-left: 4px solid;
+        text-align: left;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    
+    .factor-positive { border-left-color: #10b981; }
+    .factor-warning { border-left-color: #f59e0b; }
+    .factor-neutral { border-left-color: #6b7280; }
+    
+    .confidence-ring {
+        width: 120px;
+        height: 120px;
+        margin: 0 auto 20px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -94,90 +168,35 @@ def create_features(inputs):
     return df
 
 
-def create_gauge_chart(probability, title="Subscription Likelihood"):
-    """Create a professional gauge chart for prediction probability."""
+def create_donut_chart(probability):
+    """Create a sleek donut chart for probability visualization."""
     
-    # Determine color based on probability
-    if probability >= 0.5:
-        bar_color = "#10b981"  # Green
-    elif probability >= 0.3:
-        bar_color = "#f59e0b"  # Amber
-    else:
-        bar_color = "#ef4444"  # Red
+    color = "#10b981" if probability >= 0.5 else "#ef4444"
     
-    fig = go.Figure(go.Indicator(
-        mode="gauge+number",
-        value=probability * 100,
-        number={'suffix': "%", 'font': {'size': 40, 'color': '#1a365d'}},
-        title={'text': title, 'font': {'size': 16, 'color': '#64748b'}},
-        gauge={
-            'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "#64748b",
-                     'tickvals': [0, 25, 50, 75, 100],
-                     'ticktext': ['0%', '25%', '50%', '75%', '100%']},
-            'bar': {'color': bar_color, 'thickness': 0.75},
-            'bgcolor': "white",
-            'borderwidth': 2,
-            'bordercolor': "#e2e8f0",
-            'steps': [
-                {'range': [0, 30], 'color': '#fee2e2'},
-                {'range': [30, 50], 'color': '#fef3c7'},
-                {'range': [50, 100], 'color': '#d1fae5'}
-            ],
-            'threshold': {
-                'line': {'color': "#1a365d", 'width': 4},
-                'thickness': 0.75,
-                'value': probability * 100
-            }
-        }
-    ))
+    fig = go.Figure(data=[go.Pie(
+        values=[probability * 100, (1 - probability) * 100],
+        hole=0.75,
+        marker_colors=[color, "#e5e7eb"],
+        textinfo='none',
+        hoverinfo='skip',
+        direction='clockwise',
+        sort=False
+    )])
     
-    fig.update_layout(
-        height=280,
-        margin=dict(l=20, r=20, t=40, b=20),
-        paper_bgcolor='rgba(0,0,0,0)',
-        font={'family': "Arial"}
+    fig.add_annotation(
+        text=f"<b>{probability*100:.0f}%</b>",
+        x=0.5, y=0.5,
+        font=dict(size=28, color=color, family="Arial"),
+        showarrow=False
     )
     
-    return fig
-
-
-def create_comparison_chart(prob_yes, prob_no):
-    """Create a horizontal bar chart comparing probabilities."""
-    
-    fig = go.Figure()
-    
-    fig.add_trace(go.Bar(
-        y=['Prediction'],
-        x=[prob_yes * 100],
-        name='Subscribe',
-        orientation='h',
-        marker=dict(color='#10b981', line=dict(color='#059669', width=1)),
-        text=[f'{prob_yes*100:.1f}%'],
-        textposition='inside',
-        textfont=dict(color='white', size=14)
-    ))
-    
-    fig.add_trace(go.Bar(
-        y=['Prediction'],
-        x=[prob_no * 100],
-        name='Not Subscribe',
-        orientation='h',
-        marker=dict(color='#ef4444', line=dict(color='#dc2626', width=1)),
-        text=[f'{prob_no*100:.1f}%'],
-        textposition='inside',
-        textfont=dict(color='white', size=14)
-    ))
-    
     fig.update_layout(
-        barmode='stack',
-        height=100,
-        margin=dict(l=0, r=0, t=10, b=10),
+        showlegend=False,
+        margin=dict(l=10, r=10, t=10, b=10),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        showlegend=True,
-        legend=dict(orientation="h", yanchor="bottom", y=1, xanchor="center", x=0.5),
-        xaxis=dict(showgrid=False, showticklabels=False, range=[0, 100]),
-        yaxis=dict(showgrid=False, showticklabels=False)
+        height=160,
+        width=160
     )
     
     return fig
@@ -187,31 +206,24 @@ def get_risk_factors(inputs, proba):
     """Analyze inputs and return risk factors."""
     factors = []
     
-    # Positive factors
     if inputs['poutcome'] == 'success':
         factors.append(("✅", "Previous campaign was successful", "positive"))
     if inputs['contact'] == 'cellular':
-        factors.append(("✅", "Contacted via cellular (higher success rate)", "positive"))
+        factors.append(("✅", "Cellular contact has higher success rate", "positive"))
     if inputs['emp.var.rate'] < 0:
         factors.append(("✅", "Favorable employment conditions", "positive"))
     if inputs['education'] in ['university.degree', 'professional.course']:
         factors.append(("✅", "Higher education level", "positive"))
-    if inputs['previous'] > 0:
-        factors.append(("✅", "Previously engaged with bank", "positive"))
-    
-    # Negative factors
     if inputs['campaign'] > 5:
-        factors.append(("⚠️", f"High contact attempts ({inputs['campaign']}x) may indicate resistance", "warning"))
+        factors.append(("⚠️", f"High contact attempts ({inputs['campaign']}x)", "warning"))
     if inputs['default'] == 'yes':
         factors.append(("⚠️", "Has credit default history", "warning"))
     if inputs['pdays'] == 999:
         factors.append(("ℹ️", "No previous campaign contact", "neutral"))
-    if inputs['cons.conf.idx'] < -45:
-        factors.append(("⚠️", "Low consumer confidence period", "warning"))
     if inputs['housing'] == 'yes' and inputs['loan'] == 'yes':
-        factors.append(("⚠️", "Has both housing and personal loans", "warning"))
+        factors.append(("⚠️", "Has multiple loan obligations", "warning"))
     
-    return factors
+    return factors[:5]
 
 
 def generate_report(inputs, prediction, proba, factors):
@@ -222,57 +234,35 @@ def generate_report(inputs, prediction, proba, factors):
 ================================================================================
 Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
-PREDICTION SUMMARY
-------------------
-Result: {'LIKELY TO SUBSCRIBE' if prediction == 'yes' else 'UNLIKELY TO SUBSCRIBE'}
-Subscription Probability: {proba[1]*100:.1f}%
-Non-Subscription Probability: {proba[0]*100:.1f}%
+PREDICTION: {'LIKELY TO SUBSCRIBE' if prediction == 'yes' else 'UNLIKELY TO SUBSCRIBE'}
 Confidence: {max(proba)*100:.1f}%
 
-CLIENT PROFILE
---------------
-Age: {inputs['age']}
-Job: {inputs['job']}
-Marital Status: {inputs['marital']}
-Education: {inputs['education']}
-Credit Default: {inputs['default']}
-Housing Loan: {inputs['housing']}
-Personal Loan: {inputs['loan']}
+PROBABILITIES
+- Subscribe: {proba[1]*100:.1f}%
+- Not Subscribe: {proba[0]*100:.1f}%
 
-CAMPAIGN INFORMATION
---------------------
-Contact Type: {inputs['contact']}
-Month: {inputs['month']}
-Day of Week: {inputs['day_of_week']}
-Campaign Contacts: {inputs['campaign']}
-Days Since Last Contact: {inputs['pdays']}
-Previous Contacts: {inputs['previous']}
-Previous Outcome: {inputs['poutcome']}
+CLIENT PROFILE
+- Age: {inputs['age']} | Job: {inputs['job']} | Education: {inputs['education']}
+- Marital: {inputs['marital']} | Default: {inputs['default']}
+- Housing Loan: {inputs['housing']} | Personal Loan: {inputs['loan']}
+
+CAMPAIGN INFO
+- Contact: {inputs['contact']} | Month: {inputs['month']} | Day: {inputs['day_of_week']}
+- Contacts: {inputs['campaign']} | Previous: {inputs['previous']} | Outcome: {inputs['poutcome']}
 
 ECONOMIC INDICATORS
--------------------
-Employment Variation Rate: {inputs['emp.var.rate']}
-Consumer Price Index: {inputs['cons.price.idx']}
-Consumer Confidence Index: {inputs['cons.conf.idx']}
-Euribor 3M Rate: {inputs['euribor3m']}
-Number Employed (thousands): {inputs['nr.employed']}
+- Emp.Var.Rate: {inputs['emp.var.rate']} | CPI: {inputs['cons.price.idx']}
+- CCI: {inputs['cons.conf.idx']} | Euribor: {inputs['euribor3m']} | Employed: {inputs['nr.employed']}k
 
 KEY FACTORS
------------
 """
     for icon, text, _ in factors:
-        report += f"{icon} {text}\n"
+        report += f"  {icon} {text}\n"
     
     report += """
 ================================================================================
-                         END OF REPORT
+CAI2C08 - Machine Learning for Developers | Temasek Polytechnic
 ================================================================================
-Note: This prediction is based on historical data patterns and should be used
-as one of many factors in decision-making. Model accuracy may vary.
-
-Dataset: UCI Bank Marketing Dataset
-Model: Gradient Boosting with SMOTE
-Institution: Temasek Polytechnic - CAI2C08
 """
     return report
 
@@ -294,7 +284,7 @@ def main():
     metrics = model_package.get('metrics', {})
     threshold = model_package.get('threshold', 0.5)
     
-    # Model Metrics in expander
+    # Model Metrics
     with st.expander("📊 View Model Performance Metrics", expanded=False):
         col1, col2, col3, col4, col5 = st.columns(5)
         col1.metric("Accuracy", f"{metrics.get('accuracy', 'N/A')}%")
@@ -302,78 +292,78 @@ def main():
         col3.metric("Precision", f"{metrics.get('precision', 'N/A')}%")
         col4.metric("Recall", f"{metrics.get('recall', 'N/A')}%")
         col5.metric("ROC-AUC", f"{metrics.get('roc_auc', 'N/A')}")
-        st.caption(f"Decision Threshold: {threshold}")
     
-    # Two-column layout
-    col_input, col_result = st.columns([3, 2])
+    # Client Information
+    st.subheader("📝 Client Information")
     
-    with col_input:
-        st.subheader("📝 Client Information")
-        
-        # Personal Details
-        st.markdown("**👤 Personal Details**")
-        c1, c2, c3, c4 = st.columns(4)
-        with c1:
-            age = st.slider("Age", 18, 95, 35)
-        with c2:
-            job = st.selectbox("Job", ['admin.', 'blue-collar', 'entrepreneur', 'housemaid', 
-                                        'management', 'retired', 'self-employed', 'services', 
-                                        'student', 'technician', 'unemployed', 'unknown'])
-        with c3:
-            marital = st.selectbox("Marital Status", ['single', 'married', 'divorced'])
-        with c4:
-            education = st.selectbox("Education", ['basic.4y', 'basic.6y', 'basic.9y', 'high.school',
-                                                    'illiterate', 'professional.course', 
-                                                    'university.degree', 'unknown'])
-        
-        # Financial Status
-        st.markdown("**💳 Financial Status**")
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            default = st.selectbox("Credit Default?", ['no', 'yes', 'unknown'])
-        with c2:
-            housing = st.selectbox("Housing Loan?", ['no', 'yes', 'unknown'])
-        with c3:
-            loan = st.selectbox("Personal Loan?", ['no', 'yes', 'unknown'])
-        
-        # Campaign Info
-        st.markdown("**📞 Campaign Information**")
-        c1, c2, c3, c4 = st.columns(4)
-        with c1:
-            contact = st.selectbox("Contact Type", ['cellular', 'telephone'])
-        with c2:
-            month = st.selectbox("Month", ['jan', 'feb', 'mar', 'apr', 'may', 'jun',
-                                            'jul', 'aug', 'sep', 'oct', 'nov', 'dec'], index=4)
-        with c3:
-            day_of_week = st.selectbox("Day of Week", ['mon', 'tue', 'wed', 'thu', 'fri'])
-        with c4:
-            campaign = st.slider("Contacts (This Campaign)", 1, 50, 2)
-        
-        # Previous Campaign
-        st.markdown("**📜 Previous Campaign**")
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            pdays = st.selectbox("Days Since Last Contact", 
-                                  [999, 1, 2, 3, 5, 7, 10, 14, 21, 30, 60, 90],
-                                  help="999 = never contacted before")
-        with c2:
-            previous = st.slider("Previous Contacts", 0, 10, 0)
-        with c3:
-            poutcome = st.selectbox("Previous Outcome", ['nonexistent', 'failure', 'success'])
-        
-        # Economic Indicators
-        st.markdown("**📈 Economic Indicators**")
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            emp_var_rate = st.slider("Emp. Var. Rate", -3.5, 1.5, -0.1, 0.1)
-            cons_price_idx = st.slider("Consumer Price Idx", 92.0, 95.0, 93.5, 0.1)
-        with c2:
-            cons_conf_idx = st.slider("Consumer Conf. Idx", -51.0, -26.0, -40.0, 0.5)
-            euribor3m = st.slider("Euribor 3M Rate", 0.5, 5.1, 2.5, 0.1)
-        with c3:
-            nr_employed = st.selectbox("Nr. Employed (k)", 
-                                        [4963.6, 5008.7, 5017.5, 5076.2, 5099.1, 
-                                         5176.3, 5191.0, 5195.8, 5228.1], index=4)
+    # Personal Details
+    st.markdown("**👤 Personal Details**")
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        age = st.slider("Age", 18, 95, 35)
+    with col2:
+        job = st.selectbox("Job", ['admin.', 'blue-collar', 'entrepreneur', 'housemaid', 
+                                    'management', 'retired', 'self-employed', 'services', 
+                                    'student', 'technician', 'unemployed', 'unknown'])
+    with col3:
+        marital = st.selectbox("Marital Status", ['single', 'married', 'divorced'])
+    with col4:
+        education = st.selectbox("Education", ['basic.4y', 'basic.6y', 'basic.9y', 'high.school',
+                                                'illiterate', 'professional.course', 
+                                                'university.degree', 'unknown'])
+    
+    # Financial Status
+    st.markdown("**💳 Financial Status**")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        default = st.selectbox("Credit Default?", ['no', 'yes', 'unknown'])
+    with col2:
+        housing = st.selectbox("Housing Loan?", ['no', 'yes', 'unknown'])
+    with col3:
+        loan = st.selectbox("Personal Loan?", ['no', 'yes', 'unknown'])
+    
+    # Campaign Info
+    st.markdown("**📞 Campaign Information**")
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        contact = st.selectbox("Contact Type", ['cellular', 'telephone'])
+    with col2:
+        month = st.selectbox("Month", ['jan', 'feb', 'mar', 'apr', 'may', 'jun',
+                                        'jul', 'aug', 'sep', 'oct', 'nov', 'dec'], index=4)
+    with col3:
+        day_of_week = st.selectbox("Day of Week", ['mon', 'tue', 'wed', 'thu', 'fri'])
+    with col4:
+        campaign = st.slider("Contacts (This Campaign)", 1, 50, 2)
+    
+    # Previous Campaign
+    st.markdown("**📜 Previous Campaign**")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        pdays = st.selectbox("Days Since Last Contact", 
+                              [999, 1, 2, 3, 5, 7, 10, 14, 21, 30, 60, 90],
+                              help="999 = never contacted before")
+    with col2:
+        previous = st.slider("Previous Contacts", 0, 10, 0)
+    with col3:
+        poutcome = st.selectbox("Previous Outcome", ['nonexistent', 'failure', 'success'])
+    
+    # Economic Indicators
+    st.markdown("**📈 Economic Indicators**")
+    col1, col2, col3, col4, col5 = st.columns(5)
+    with col1:
+        emp_var_rate = st.slider("Emp. Var. Rate", -3.5, 1.5, -0.1, 0.1)
+    with col2:
+        cons_price_idx = st.slider("Consumer Price Idx", 92.0, 95.0, 93.5, 0.1)
+    with col3:
+        cons_conf_idx = st.slider("Consumer Conf. Idx", -51.0, -26.0, -40.0, 0.5)
+    with col4:
+        euribor3m = st.slider("Euribor 3M Rate", 0.5, 5.1, 2.5, 0.1)
+    with col5:
+        nr_employed = st.selectbox("Nr. Employed (k)", 
+                                    [4963.6, 5008.7, 5017.5, 5076.2, 5099.1, 
+                                     5176.3, 5191.0, 5195.8, 5228.1], index=4)
+    
+    st.divider()
     
     # Collect inputs
     inputs = {
@@ -385,10 +375,9 @@ def main():
         'cons.conf.idx': cons_conf_idx, 'euribor3m': euribor3m, 'nr.employed': nr_employed
     }
     
-    with col_result:
-        st.subheader("🎯 Prediction Result")
+    # PREDICT BUTTON
+    if st.button("🔮 PREDICT SUBSCRIPTION LIKELIHOOD", type="primary", use_container_width=True):
         
-        # Always show prediction (live update)
         try:
             input_df = create_features(inputs)
             input_df = input_df[model_package['feature_columns']]
@@ -398,44 +387,91 @@ def main():
             
             prediction = 1 if proba[1] >= threshold else 0
             pred_label = model_package['label_encoder'].inverse_transform([prediction])[0]
+            confidence = max(proba) * 100
             
-            # Gauge Chart
-            fig = create_gauge_chart(proba[1])
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # Verdict
-            if pred_label == 'yes':
-                st.success(f"### ✅ LIKELY TO SUBSCRIBE")
-            else:
-                st.error(f"### ❌ UNLIKELY TO SUBSCRIBE")
-            
-            # Probability Bar
-            st.markdown("**Probability Breakdown**")
-            fig2 = create_comparison_chart(proba[1], proba[0])
-            st.plotly_chart(fig2, use_container_width=True)
-            
-            # Risk Factors
-            st.markdown("**Key Factors**")
             factors = get_risk_factors(inputs, proba)
-            for icon, text, factor_type in factors[:5]:  # Show top 5
-                if factor_type == "positive":
-                    st.markdown(f'<div class="insight-card" style="border-left: 3px solid #10b981;">{icon} {text}</div>', unsafe_allow_html=True)
-                elif factor_type == "warning":
-                    st.markdown(f'<div class="insight-card" style="border-left: 3px solid #f59e0b;">{icon} {text}</div>', unsafe_allow_html=True)
-                else:
-                    st.markdown(f'<div class="insight-card" style="border-left: 3px solid #64748b;">{icon} {text}</div>', unsafe_allow_html=True)
+            
+            # ============ CREATIVE RESULT DISPLAY ============
+            st.markdown("---")
+            
+            if pred_label == 'yes':
+                # POSITIVE RESULT
+                st.balloons()  # Fun animation!
+                
+                st.markdown(f"""
+                <div class="result-card result-positive">
+                    <div class="result-icon">🎯</div>
+                    <div class="result-title-yes">HIGH POTENTIAL CLIENT</div>
+                    <div class="result-subtitle">This client is likely to subscribe to a term deposit</div>
+                    
+                    <div class="prob-container">
+                        <div class="prob-item">
+                            <div class="prob-value prob-yes">{proba[1]*100:.1f}%</div>
+                            <div class="prob-label">Subscribe</div>
+                        </div>
+                        <div class="prob-item">
+                            <div class="prob-value prob-no">{proba[0]*100:.1f}%</div>
+                            <div class="prob-label">Not Subscribe</div>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            else:
+                # NEGATIVE RESULT
+                st.markdown(f"""
+                <div class="result-card result-negative">
+                    <div class="result-icon">📊</div>
+                    <div class="result-title-no">LOW POTENTIAL CLIENT</div>
+                    <div class="result-subtitle">This client is unlikely to subscribe to a term deposit</div>
+                    
+                    <div class="prob-container">
+                        <div class="prob-item">
+                            <div class="prob-value prob-yes">{proba[1]*100:.1f}%</div>
+                            <div class="prob-label">Subscribe</div>
+                        </div>
+                        <div class="prob-item">
+                            <div class="prob-value prob-no">{proba[0]*100:.1f}%</div>
+                            <div class="prob-label">Not Subscribe</div>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # Donut Chart
+            col1, col2, col3 = st.columns([1, 1, 1])
+            with col2:
+                st.markdown("**Confidence Score**")
+                fig = create_donut_chart(proba[1])
+                st.plotly_chart(fig, use_container_width=True)
+            
+            # Key Factors
+            st.markdown("### 💡 Key Factors Influencing This Prediction")
+            
+            cols = st.columns(2)
+            for i, (icon, text, factor_type) in enumerate(factors):
+                with cols[i % 2]:
+                    css_class = f"factor-{factor_type}"
+                    st.markdown(f"""
+                    <div class="factor-card {css_class}">
+                        {icon} {text}
+                    </div>
+                    """, unsafe_allow_html=True)
             
             # Download Report
             st.markdown("---")
             report = generate_report(inputs, pred_label, proba, factors)
-            st.download_button(
-                label="📄 Download Prediction Report",
-                data=report,
-                file_name=f"prediction_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
-                mime="text/plain",
-                use_container_width=True
-            )
             
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                st.download_button(
+                    label="📄 Download Prediction Report",
+                    data=report,
+                    file_name=f"prediction_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                    mime="text/plain",
+                    use_container_width=True
+                )
+        
         except Exception as e:
             st.error(f"⚠️ Error: {str(e)}")
     
